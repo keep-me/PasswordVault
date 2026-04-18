@@ -324,10 +324,12 @@
         if (opts.syms.checked)  chars += '!@#$%^&*()_+-=[]{}|;:,.<>?';
         
         // Add custom included symbols
+        let customSyms = '';
         if (opts.includeSyms.value) {
           for (let c of opts.includeSyms.value) {
             if (!chars.includes(c)) {
               chars += c;
+              customSyms += c;
             }
           }
         }
@@ -336,6 +338,8 @@
         if (opts.excludeSyms.value) {
           for (let c of opts.excludeSyms.value) {
             chars = chars.split(c).join('');
+            // Also remove from customSyms if excluded
+            customSyms = customSyms.split(c).join('');
           }
         }
         
@@ -360,6 +364,73 @@
             }
           }
           pwd += nextChar;
+        }
+        
+        // Ensure password contains at least one custom symbol if specified
+        if (customSyms.length > 0) {
+          let hasCustomSym = false;
+          for (let c of customSyms) {
+            if (pwd.includes(c)) {
+              hasCustomSym = true;
+              break;
+            }
+          }
+          
+          // If no custom symbol in password, replace a random character with a custom symbol
+          if (!hasCustomSym) {
+            const randomIndex = Math.floor(Math.random() * pwd.length);
+            const randomCustomSym = customSyms.charAt(Math.floor(Math.random() * customSyms.length));
+            
+            // Check if replacing would create 3+ consecutive identical characters
+            let canReplace = true;
+            if (randomIndex >= 2) {
+              if (pwd[randomIndex-1] === randomCustomSym && pwd[randomIndex-2] === randomCustomSym) {
+                canReplace = false;
+              }
+            }
+            if (randomIndex >= 1 && randomIndex < pwd.length - 1) {
+              if (pwd[randomIndex-1] === randomCustomSym && pwd[randomIndex+1] === randomCustomSym) {
+                canReplace = false;
+              }
+            }
+            if (randomIndex < pwd.length - 2) {
+              if (pwd[randomIndex+1] === randomCustomSym && pwd[randomIndex+2] === randomCustomSym) {
+                canReplace = false;
+              }
+            }
+            
+            if (canReplace) {
+              pwd = pwd.substring(0, randomIndex) + randomCustomSym + pwd.substring(randomIndex + 1);
+            } else {
+              // If can't replace at this index, try up to 10 more times
+              for (let attempts=0; attempts<10; attempts++) {
+                const newIndex = Math.floor(Math.random() * pwd.length);
+                const newCustomSym = customSyms.charAt(Math.floor(Math.random() * customSyms.length));
+                
+                canReplace = true;
+                if (newIndex >= 2) {
+                  if (pwd[newIndex-1] === newCustomSym && pwd[newIndex-2] === newCustomSym) {
+                    canReplace = false;
+                  }
+                }
+                if (newIndex >= 1 && newIndex < pwd.length - 1) {
+                  if (pwd[newIndex-1] === newCustomSym && pwd[newIndex+1] === newCustomSym) {
+                    canReplace = false;
+                  }
+                }
+                if (newIndex < pwd.length - 2) {
+                  if (pwd[newIndex+1] === newCustomSym && pwd[newIndex+2] === newCustomSym) {
+                    canReplace = false;
+                  }
+                }
+                
+                if (canReplace) {
+                  pwd = pwd.substring(0, newIndex) + newCustomSym + pwd.substring(newIndex + 1);
+                  break;
+                }
+              }
+            }
+          }
         }
         
         genPwd.value = pwd;
