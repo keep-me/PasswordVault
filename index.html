@@ -196,6 +196,10 @@
           <label>Length <input type="number" id="opt-length" min="4" max="64" value="16"></label>
         </div>
         <div class="form-row">
+          <label>Include Custom Symbols <input type="text" id="opt-include-syms" placeholder="e.g., @#$"></label>
+          <label>Exclude Symbols <input type="text" id="opt-exclude-syms" placeholder="e.g., !*()"></label>
+        </div>
+        <div class="form-row">
           <label>Generated Password
             <input type="text" id="gen-password" readonly>
           </label>
@@ -278,7 +282,9 @@
         upper:  document.getElementById('opt-upper'),
         nums:   document.getElementById('opt-numbers'),
         syms:   document.getElementById('opt-symbols'),
-        len:    document.getElementById('opt-length')
+        len:    document.getElementById('opt-length'),
+        includeSyms: document.getElementById('opt-include-syms'),
+        excludeSyms: document.getElementById('opt-exclude-syms')
       };
       const genPwd     = document.getElementById('gen-password');
       const btnGen     = document.getElementById('generate');
@@ -316,11 +322,46 @@
         if (opts.upper.checked) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         if (opts.nums.checked)  chars += '0123456789';
         if (opts.syms.checked)  chars += '!@#$%^&*()_+-=[]{}|;:,.<>?';
+        
+        // Add custom included symbols
+        if (opts.includeSyms.value) {
+          for (let c of opts.includeSyms.value) {
+            if (!chars.includes(c)) {
+              chars += c;
+            }
+          }
+        }
+        
+        // Remove excluded symbols
+        if (opts.excludeSyms.value) {
+          for (let c of opts.excludeSyms.value) {
+            chars = chars.split(c).join('');
+          }
+        }
+        
+        // Ensure we have at least some characters to work with
+        if (chars.length === 0) {
+          alert('No character types selected. Please enable at least one character type.');
+          return;
+        }
+        
         const length = opts.len.valueAsNumber;
         let pwd = '';
+        
+        // Generate password without 3+ consecutive identical characters
         for (let i=0; i<length; i++) {
-          pwd += chars.charAt(Math.floor(Math.random()*chars.length));
+          let nextChar;
+          // Try up to 100 times to find a valid character
+          for (let attempts=0; attempts<100; attempts++) {
+            nextChar = chars.charAt(Math.floor(Math.random()*chars.length));
+            // Check if this would create 3+ consecutive identical characters
+            if (i < 2 || !(pwd[i-1] === nextChar && pwd[i-2] === nextChar)) {
+              break;
+            }
+          }
+          pwd += nextChar;
         }
+        
         genPwd.value = pwd;
         entryPw.value = pwd;
       };
